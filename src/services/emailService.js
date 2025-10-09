@@ -1,0 +1,397 @@
+import nodemailer from 'nodemailer';
+
+// Create transporter
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: parseInt(process.env.EMAIL_PORT) || 587,
+    secure: process.env.EMAIL_SECURE === 'true',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+};
+
+// Send email function
+export const sendEmail = async(options) => {
+  // In development mode, just log the email instead of sending
+  if (process.env.NODE_ENV === 'development') {
+    console.log('=== DEVELOPMENT MODE: Email would be sent ===');
+    console.log('To:', options.to);
+    console.log('Subject:', options.subject);
+    console.log('From:', `"${process.env.CLINIC_NAME}" <${process.env.EMAIL_USER}>`);
+    console.log('HTML Content Length:', options.html.length);
+    console.log('=====================================');
+    return { success: true, messageId: 'dev-mode-' + Date.now() };
+  }
+
+  try {
+    const transporter = createTransporter();
+
+    const mailOptions = {
+      from: `"${process.env.CLINIC_NAME}" <${process.env.EMAIL_USER}>`,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      ...(options.cc && { cc: options.cc }),
+      ...(options.bcc && { bcc: options.bcc })
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Email sending failed:', error);
+    throw new Error('Failed to send email');
+  }
+};
+
+// Contact form email templates
+export const sendContactConfirmationEmail = async(contactData) => {
+  const { name, email, subject, message } = contactData;
+
+  const userEmailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Contact Confirmation - Bhargava Clinic</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Thank You for Contacting Us!</h1>
+        </div>
+        <div class="content">
+          <h2>Dear ${name},</h2>
+          <p>Thank you for reaching out to Bhargava Clinic. We have received your message and appreciate you taking the time to contact us.</p>
+
+          <h3>Your Message Details:</h3>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <p><strong>Message:</strong></p>
+          <p style="background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea;">${message.replace(/\n/g, '<br>')}</p>
+
+          <p>Our team will review your inquiry and get back to you within 24 hours. If you have any urgent concerns, please don't hesitate to call us directly at <strong>+919329198211</strong>.</p>
+
+          <p>In the meantime, feel free to explore our website for more information about our services.</p>
+
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" class="button">Visit Our Website</a>
+
+          <p>Best regards,<br>
+          <strong>Bhargava Clinic Team</strong><br>
+          Skin & Hair Specialists</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message. Please do not reply to this email.</p>
+          <p>&copy; ${new Date().getFullYear()} Bhargava Clinic. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const adminEmailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>New Contact Form Submission</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ff6b6b; }
+        .urgent { color: #e74c3c; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>New Contact Form Submission</h1>
+        </div>
+        <div class="content">
+          <p>You have received a new contact form submission. Here are the details:</p>
+
+          <div class="info-box">
+            <h3>Contact Information:</h3>
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+
+          <div class="info-box">
+            <h3>Message:</h3>
+            <p>${message.replace(/\n/g, '<br>')}</p>
+          </div>
+
+          <p>Please respond to this inquiry as soon as possible. You can reply directly to <a href="mailto:${email}">${email}</a> or contact them at their provided information.</p>
+
+          <p><span class="urgent">Priority:</span> Please respond within 24 hours.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Send confirmation to user
+  await sendEmail({
+    to: email,
+    subject: `Thank you for contacting Bhargava Clinic - ${subject}`,
+    html: userEmailHtml
+  });
+
+  // Send notification to admin
+  await sendEmail({
+    to: process.env.CLINIC_EMAIL,
+    subject: `New Contact Form: ${subject}`,
+    html: adminEmailHtml
+  });
+};
+
+// Appointment booking email templates
+export const sendAppointmentConfirmationEmail = async(appointmentData) => {
+  const { name, email, phone, treatmentType, preferredDate, preferredTime, message } = appointmentData;
+
+  const userEmailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Appointment Request Received - Bhargava Clinic</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .appointment-box { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #4ecdc4; }
+        .button { display: inline-block; background: #4ecdc4; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Appointment Request Received!</h1>
+        </div>
+        <div class="content">
+          <h2>Dear ${name},</h2>
+          <p>Thank you for booking an appointment with Bhargava Clinic. We have received your appointment request and will contact you shortly to confirm the details.</p>
+
+          <div class="appointment-box">
+            <h3>Your Appointment Details:</h3>
+            <p><strong>Treatment:</strong> ${treatmentType}</p>
+            <p><strong>Preferred Date:</strong> ${new Date(preferredDate).toLocaleDateString()}</p>
+            <p><strong>Preferred Time:</strong> ${preferredTime}</p>
+            <p><strong>Phone:</strong> ${phone}</p>
+            ${message ? `<p><strong>Additional Notes:</strong> ${message.replace(/\n/g, '<br>')}</p>` : ''}
+          </div>
+
+          <p>Our team will review your request and confirm your appointment within 24 hours. We may suggest alternative dates or times based on availability.</p>
+
+          <p>If you need to make any changes or have questions, please contact us at <strong>+919329198211</strong> or reply to this email.</p>
+
+          <a href="tel:+919329198211" class="button">Call Us</a>
+
+          <p>Best regards,<br>
+          <strong>Bhargava Clinic Team</strong><br>
+          Skin & Hair Specialists</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message. Please do not reply to this email.</p>
+          <p>&copy; ${new Date().getFullYear()} Bhargava Clinic. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const adminEmailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>New Appointment Booking</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ff9ff3 0%, #f368e0 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ff9ff3; }
+        .urgent { color: #e74c3c; font-weight: bold; }
+        .action-button { display: inline-block; background: #ff9ff3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>New Appointment Booking</h1>
+        </div>
+        <div class="content">
+          <p>A new appointment has been requested. Please review and confirm the booking.</p>
+
+          <div class="info-box">
+            <h3>Patient Information:</h3>
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Phone:</strong> ${phone}</p>
+          </div>
+
+          <div class="info-box">
+            <h3>Appointment Details:</h3>
+            <p><strong>Treatment:</strong> ${treatmentType}</p>
+            <p><strong>Preferred Date:</strong> ${new Date(preferredDate).toLocaleDateString()}</p>
+            <p><strong>Preferred Time:</strong> ${preferredTime}</p>
+            ${message ? `<p><strong>Notes:</strong> ${message.replace(/\n/g, '<br>')}</p>` : ''}
+            <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+
+          <p><span class="urgent">Action Required:</span> Please contact the patient within 24 hours to confirm this appointment.</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="mailto:${email}" class="action-button">Email Patient</a>
+            <a href="tel:${phone.replace(/\D/g, '')}" class="action-button">Call Patient</a>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Send confirmation to user
+  await sendEmail({
+    to: email,
+    subject: 'Appointment Request Received - Bhargava Clinic',
+    html: userEmailHtml
+  });
+
+  // Send notification to admin
+  await sendEmail({
+    to: process.env.CLINIC_EMAIL,
+    subject: `New Appointment Booking: ${name} - ${treatmentType}`,
+    html: adminEmailHtml
+  });
+};
+
+// Newsletter subscription email templates
+export const sendSubscriptionConfirmationEmail = async(subscriberData) => {
+  const { email } = subscriberData;
+
+  const userEmailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Welcome to Bhargava Clinic Newsletter</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #a8e6cf 0%, #ffd3a5 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .welcome-box { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; text-align: center; }
+        .button { display: inline-block; background: #a8e6cf; color: #333; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Welcome to Our Newsletter!</h1>
+        </div>
+        <div class="content">
+          <div class="welcome-box">
+            <h2>Thank you for subscribing!</h2>
+            <p>You've successfully subscribed to Bhargava Clinic's newsletter. We're excited to share skin care tips, treatment updates, and exclusive offers with you.</p>
+          </div>
+
+          <h3>What to expect:</h3>
+          <ul>
+            <li>Weekly skin care tips and advice</li>
+            <li>Updates on new treatments and technologies</li>
+            <li>Special offers and promotions</li>
+            <li>Health and wellness information</li>
+          </ul>
+
+          <p>Stay tuned for our next newsletter! In the meantime, feel free to explore our website for more information about our services.</p>
+
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" class="button">Visit Our Website</a>
+
+          <p>Best regards,<br>
+          <strong>Bhargava Clinic Team</strong><br>
+          Skin & Hair Specialists</p>
+        </div>
+        <div class="footer">
+          <p>You received this email because you subscribed to our newsletter.</p>
+          <p>&copy; ${new Date().getFullYear()} Bhargava Clinic. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const adminEmailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>New Newsletter Subscription</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ffd3a5 0%, #a8e6cf 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffd3a5; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>New Newsletter Subscriber</h1>
+        </div>
+        <div class="content">
+          <p>A new user has subscribed to your newsletter.</p>
+
+          <div class="info-box">
+            <h3>Subscriber Details:</h3>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Subscribed:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+
+          <p>The subscriber will now receive your newsletter updates and promotional emails.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Send welcome email to subscriber
+  await sendEmail({
+    to: email,
+    subject: 'Welcome to Bhargava Clinic Newsletter!',
+    html: userEmailHtml
+  });
+
+  // Send notification to admin
+  await sendEmail({
+    to: process.env.CLINIC_EMAIL,
+    subject: 'New Newsletter Subscriber',
+    html: adminEmailHtml
+  });
+};
+
+export default {
+  sendEmail,
+  sendContactConfirmationEmail,
+  sendAppointmentConfirmationEmail,
+  sendSubscriptionConfirmationEmail
+};

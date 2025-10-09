@@ -5,7 +5,7 @@ import { asyncHandler, sendSuccessResponse } from '../middleware/errorHandler.js
 const router = express.Router();
 
 // Health check endpoint
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async(req, res) => {
   const healthCheck = {
     status: 'OK',
     timestamp: new Date().toISOString(),

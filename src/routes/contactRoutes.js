@@ -2,6 +2,7 @@ import express from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import { Contact } from '../models/index.js';
 import { asyncHandler, sendSuccessResponse, sendErrorResponse, formatValidationErrors } from '../middleware/errorHandler.js';
+import { sendContactConfirmationEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -53,7 +54,7 @@ const validateContactUpdate = [
 // @route   POST /api/contact
 // @desc    Create a new contact
 // @access  Public
-router.post('/', validateContact, asyncHandler(async (req, res) => {
+router.post('/', validateContact, asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -70,28 +71,36 @@ router.post('/', validateContact, asyncHandler(async (req, res) => {
 
   await contact.save();
 
+  // Send confirmation emails asynchronously (don't wait for completion)
+  try {
+    sendContactConfirmationEmail({ name, email, subject, message });
+  } catch (emailError) {
+    console.error('Failed to send contact confirmation email:', emailError);
+    // Don't fail the request if email fails
+  }
+
   sendSuccessResponse(res, 'Contact created successfully', contact, 201);
 }));
 
 // @route   GET /api/contact
 // @desc    Get all contacts with pagination and filtering
 // @access  Public
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async(req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
   // Build filter object
   const filter = {};
-  
+
   if (req.query.status) {
     filter.status = req.query.status;
   }
-  
+
   if (req.query.priority) {
     filter.priority = req.query.priority;
   }
-  
+
   if (req.query.search) {
     filter.$or = [
       { name: { $regex: req.query.search, $options: 'i' } },
@@ -140,14 +149,14 @@ router.get('/', asyncHandler(async (req, res) => {
 // @access  Public
 router.get('/:id', [
   param('id').isMongoId().withMessage('Invalid contact ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const contact = await Contact.findById(req.params.id);
-  
+
   if (!contact) {
     return sendErrorResponse(res, 'Contact not found', 404);
   }
@@ -161,26 +170,26 @@ router.get('/:id', [
 router.put('/:id', [
   param('id').isMongoId().withMessage('Invalid contact ID'),
   ...validateContactUpdate
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const contact = await Contact.findById(req.params.id);
-  
+
   if (!contact) {
     return sendErrorResponse(res, 'Contact not found', 404);
   }
 
   // Update fields
   const updateData = req.body;
-  
+
   // Handle status changes
   if (updateData.status === 'replied' && contact.status !== 'replied') {
     updateData.repliedAt = new Date();
   }
-  
+
   if (updateData.status === 'archived' && contact.status !== 'archived') {
     updateData.archivedAt = new Date();
   }
@@ -199,14 +208,14 @@ router.put('/:id', [
 // @access  Public
 router.delete('/:id', [
   param('id').isMongoId().withMessage('Invalid contact ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const contact = await Contact.findById(req.params.id);
-  
+
   if (!contact) {
     return sendErrorResponse(res, 'Contact not found', 404);
   }
@@ -219,7 +228,7 @@ router.delete('/:id', [
 // @route   GET /api/contact/stats/summary
 // @desc    Get contact statistics
 // @access  Public
-router.get('/stats/summary', asyncHandler(async (req, res) => {
+router.get('/stats/summary', asyncHandler(async(req, res) => {
   const stats = await Contact.aggregate([
     {
       $group: {

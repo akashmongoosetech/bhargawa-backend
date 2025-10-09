@@ -5,7 +5,7 @@ import { Contact, Appointment, Blog, Subscriber } from '../models/index.js';
 // Load environment variables
 dotenv.config();
 
-const seedDatabase = async () => {
+const seedDatabase = async() => {
   try {
     // Connect to database
     await mongoose.connect(process.env.MONGODB_URI);
@@ -246,7 +246,7 @@ const seedDatabase = async () => {
     console.log('📧 Seeded subscribers');
 
     console.log('✅ Database seeding completed successfully!');
-    console.log(`📊 Seeded data:`);
+    console.log('📊 Seeded data:');
     console.log(`   - ${contacts.length} contacts`);
     console.log(`   - ${appointments.length} appointments`);
     console.log(`   - ${blogs.length} blog posts`);

@@ -143,7 +143,7 @@ const validateBlogUpdate = [
 // @route   POST /api/blog
 // @desc    Create a new blog post
 // @access  Public
-router.post('/', validateBlog, asyncHandler(async (req, res) => {
+router.post('/', validateBlog, asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -171,22 +171,22 @@ router.post('/', validateBlog, asyncHandler(async (req, res) => {
 // @route   GET /api/blog
 // @desc    Get all blog posts with pagination and filtering
 // @access  Public
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async(req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
   // Build filter object
   const filter = {};
-  
+
   if (req.query.status) {
     filter.status = req.query.status;
   }
-  
+
   if (req.query.category) {
     filter.category = req.query.category;
   }
-  
+
   if (req.query.search) {
     filter.$or = [
       { title: { $regex: req.query.search, $options: 'i' } },
@@ -197,7 +197,7 @@ router.get('/', asyncHandler(async (req, res) => {
   }
 
   // Sort by publishedAt for published posts, createdAt for drafts
-  const sort = req.query.status === 'published' 
+  const sort = req.query.status === 'published'
     ? { publishedAt: -1, createdAt: -1 }
     : { createdAt: -1 };
 
@@ -229,14 +229,14 @@ router.get('/', asyncHandler(async (req, res) => {
 // @access  Public
 router.get('/:slug', [
   param('slug').isLength({ min: 3, max: 200 }).withMessage('Invalid slug')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const blog = await Blog.findOne({ slug: req.params.slug });
-  
+
   if (!blog) {
     return sendErrorResponse(res, 'Blog post not found', 404);
   }
@@ -255,23 +255,23 @@ router.get('/:slug', [
 router.put('/:id', [
   param('id').isMongoId().withMessage('Invalid blog ID'),
   ...validateBlogUpdate
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const blog = await Blog.findById(req.params.id);
-  
+
   if (!blog) {
     return sendErrorResponse(res, 'Blog post not found', 404);
   }
 
   // Check if slug already exists (excluding current blog)
   if (req.body.slug && req.body.slug !== blog.slug) {
-    const existingBlog = await Blog.findOne({ 
-      slug: req.body.slug, 
-      _id: { $ne: req.params.id } 
+    const existingBlog = await Blog.findOne({
+      slug: req.body.slug,
+      _id: { $ne: req.params.id }
     });
     if (existingBlog) {
       return sendErrorResponse(res, 'A blog post with this slug already exists', 400);
@@ -298,14 +298,14 @@ router.put('/:id', [
 // @access  Public
 router.delete('/:id', [
   param('id').isMongoId().withMessage('Invalid blog ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const blog = await Blog.findById(req.params.id);
-  
+
   if (!blog) {
     return sendErrorResponse(res, 'Blog post not found', 404);
   }

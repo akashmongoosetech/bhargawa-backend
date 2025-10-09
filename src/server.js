@@ -86,12 +86,12 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Database connection
-const connectDB = async () => {
+const connectDB = async() => {
   try {
-    const mongoURI = process.env.NODE_ENV === 'test' 
-      ? process.env.MONGODB_TEST_URI 
+    const mongoURI = process.env.NODE_ENV === 'test'
+      ? process.env.MONGODB_TEST_URI
       : process.env.MONGODB_URI;
-    
+
     await mongoose.connect(mongoURI);
     console.log('✅ MongoDB connected successfully');
   } catch (error) {
@@ -138,13 +138,13 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', async() => {
   console.log('SIGTERM received, shutting down gracefully');
   await mongoose.connection.close();
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
+process.on('SIGINT', async() => {
   console.log('SIGINT received, shutting down gracefully');
   await mongoose.connection.close();
   process.exit(0);

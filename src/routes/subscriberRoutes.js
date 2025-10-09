@@ -2,6 +2,7 @@ import express from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import { Subscriber } from '../models/index.js';
 import { asyncHandler, sendSuccessResponse, sendErrorResponse, formatValidationErrors } from '../middleware/errorHandler.js';
+import { sendSubscriptionConfirmationEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ const validateSubscription = [
 // @route   POST /api/subscriber
 // @desc    Subscribe to newsletter
 // @access  Public
-router.post('/', validateSubscription, asyncHandler(async (req, res) => {
+router.post('/', validateSubscription, asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -42,24 +43,32 @@ router.post('/', validateSubscription, asyncHandler(async (req, res) => {
 
   await subscriber.save();
 
+  // Send confirmation emails asynchronously (don't wait for completion)
+  try {
+    sendSubscriptionConfirmationEmail({ email });
+  } catch (emailError) {
+    console.error('Failed to send subscription confirmation email:', emailError);
+    // Don't fail the request if email fails
+  }
+
   sendSuccessResponse(res, 'Successfully subscribed to newsletter', subscriber, 201);
 }));
 
 // @route   GET /api/subscriber
 // @desc    Get all subscribers with pagination and filtering
 // @access  Public
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async(req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
   // Build filter object
   const filter = {};
-  
+
   if (req.query.search) {
     filter.email = { $regex: req.query.search, $options: 'i' };
   }
-  
+
   if (req.query.source) {
     filter.source = req.query.source;
   }
@@ -92,14 +101,14 @@ router.get('/', asyncHandler(async (req, res) => {
 // @access  Public
 router.delete('/:id', [
   param('id').isMongoId().withMessage('Invalid subscriber ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const subscriber = await Subscriber.findById(req.params.id);
-  
+
   if (!subscriber) {
     return sendErrorResponse(res, 'Subscriber not found', 404);
   }
@@ -112,7 +121,7 @@ router.delete('/:id', [
 // @route   GET /api/subscriber/stats/summary
 // @desc    Get subscriber statistics
 // @access  Public
-router.get('/stats/summary', asyncHandler(async (req, res) => {
+router.get('/stats/summary', asyncHandler(async(req, res) => {
   const stats = await Subscriber.aggregate([
     {
       $group: {

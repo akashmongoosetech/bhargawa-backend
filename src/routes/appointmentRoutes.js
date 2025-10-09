@@ -2,6 +2,7 @@ import express from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import { Appointment } from '../models/index.js';
 import { asyncHandler, sendSuccessResponse, sendErrorResponse, formatValidationErrors } from '../middleware/errorHandler.js';
+import { sendAppointmentConfirmationEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -100,7 +101,7 @@ const validateAppointmentConfirm = [
 // @route   POST /api/appointment
 // @desc    Create a new appointment
 // @access  Public
-router.post('/', validateAppointment, asyncHandler(async (req, res) => {
+router.post('/', validateAppointment, asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -112,7 +113,7 @@ router.post('/', validateAppointment, asyncHandler(async (req, res) => {
   const selectedDate = new Date(preferredDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   if (selectedDate < today) {
     return sendErrorResponse(res, 'Preferred date cannot be in the past', 400);
   }
@@ -129,32 +130,48 @@ router.post('/', validateAppointment, asyncHandler(async (req, res) => {
 
   await appointment.save();
 
+  // Send confirmation emails asynchronously (don't wait for completion)
+  try {
+    sendAppointmentConfirmationEmail({
+      name,
+      email,
+      phone,
+      treatmentType,
+      preferredDate: selectedDate,
+      preferredTime,
+      message
+    });
+  } catch (emailError) {
+    console.error('Failed to send appointment confirmation email:', emailError);
+    // Don't fail the request if email fails
+  }
+
   sendSuccessResponse(res, 'Appointment created successfully', appointment, 201);
 }));
 
 // @route   GET /api/appointment
 // @desc    Get all appointments with pagination and filtering
 // @access  Public
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async(req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
   // Build filter object
   const filter = {};
-  
+
   if (req.query.status) {
     filter.status = req.query.status;
   }
-  
+
   if (req.query.priority) {
     filter.priority = req.query.priority;
   }
-  
+
   if (req.query.treatmentType) {
     filter.treatmentType = req.query.treatmentType;
   }
-  
+
   if (req.query.search) {
     filter.$or = [
       { name: { $regex: req.query.search, $options: 'i' } },
@@ -204,14 +221,14 @@ router.get('/', asyncHandler(async (req, res) => {
 // @access  Public
 router.get('/:id', [
   param('id').isMongoId().withMessage('Invalid appointment ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const appointment = await Appointment.findById(req.params.id);
-  
+
   if (!appointment) {
     return sendErrorResponse(res, 'Appointment not found', 404);
   }
@@ -225,21 +242,21 @@ router.get('/:id', [
 router.put('/:id', [
   param('id').isMongoId().withMessage('Invalid appointment ID'),
   ...validateAppointmentUpdate
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const appointment = await Appointment.findById(req.params.id);
-  
+
   if (!appointment) {
     return sendErrorResponse(res, 'Appointment not found', 404);
   }
 
   // Update fields
   const updateData = req.body;
-  
+
   // Handle status changes
   if (updateData.status === 'cancelled' && appointment.status !== 'cancelled') {
     updateData.cancelledAt = new Date();
@@ -259,14 +276,14 @@ router.put('/:id', [
 // @access  Public
 router.delete('/:id', [
   param('id').isMongoId().withMessage('Invalid appointment ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const appointment = await Appointment.findById(req.params.id);
-  
+
   if (!appointment) {
     return sendErrorResponse(res, 'Appointment not found', 404);
   }
@@ -282,14 +299,14 @@ router.delete('/:id', [
 router.post('/:id/confirm', [
   param('id').isMongoId().withMessage('Invalid appointment ID'),
   ...validateAppointmentConfirm
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
   }
 
   const appointment = await Appointment.findById(req.params.id);
-  
+
   if (!appointment) {
     return sendErrorResponse(res, 'Appointment not found', 404);
   }
@@ -311,7 +328,7 @@ router.post('/:id/confirm', [
 // @route   GET /api/appointment/stats/summary
 // @desc    Get appointment statistics
 // @access  Public
-router.get('/stats/summary', asyncHandler(async (req, res) => {
+router.get('/stats/summary', asyncHandler(async(req, res) => {
   const stats = await Appointment.aggregate([
     {
       $group: {
@@ -350,7 +367,7 @@ router.get('/stats/summary', asyncHandler(async (req, res) => {
 // @route   GET /api/appointment/treatments
 // @desc    Get available treatments and time slots
 // @access  Public
-router.get('/treatments', asyncHandler(async (req, res) => {
+router.get('/treatments', asyncHandler(async(req, res) => {
   const treatments = [
     'Acne Treatment',
     'Anti-Aging Treatment',

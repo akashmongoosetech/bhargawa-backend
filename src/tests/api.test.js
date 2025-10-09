@@ -3,7 +3,7 @@ import app from '../src/server.js';
 
 describe('API Endpoints', () => {
   describe('Health Check', () => {
-    it('should return server health status', async () => {
+    it('should return server health status', async() => {
       const res = await request(app)
         .get('/health')
         .expect(200);
@@ -14,7 +14,7 @@ describe('API Endpoints', () => {
   });
 
   describe('Root Endpoint', () => {
-    it('should return API information', async () => {
+    it('should return API information', async() => {
       const res = await request(app)
         .get('/')
         .expect(200);
@@ -25,7 +25,7 @@ describe('API Endpoints', () => {
   });
 
   describe('Contact Endpoints', () => {
-    it('should create a new contact', async () => {
+    it('should create a new contact', async() => {
       const contactData = {
         name: 'John Doe',
         email: 'john@example.com',
@@ -43,7 +43,7 @@ describe('API Endpoints', () => {
       expect(res.body.data.email).toBe(contactData.email);
     });
 
-    it('should get contacts with pagination', async () => {
+    it('should get contacts with pagination', async() => {
       const res = await request(app)
         .get('/api/contact')
         .expect(200);
@@ -53,7 +53,7 @@ describe('API Endpoints', () => {
       expect(res.body.data).toHaveProperty('pagination');
     });
 
-    it('should get contact statistics', async () => {
+    it('should get contact statistics', async() => {
       const res = await request(app)
         .get('/api/contact/stats/summary')
         .expect(200);
@@ -65,7 +65,7 @@ describe('API Endpoints', () => {
   });
 
   describe('Appointment Endpoints', () => {
-    it('should create a new appointment', async () => {
+    it('should create a new appointment', async() => {
       const appointmentData = {
         name: 'Jane Smith',
         email: 'jane@example.com',
@@ -86,7 +86,7 @@ describe('API Endpoints', () => {
       expect(res.body.data.email).toBe(appointmentData.email);
     });
 
-    it('should get appointments with pagination', async () => {
+    it('should get appointments with pagination', async() => {
       const res = await request(app)
         .get('/api/appointment')
         .expect(200);
@@ -96,7 +96,7 @@ describe('API Endpoints', () => {
       expect(res.body.data).toHaveProperty('pagination');
     });
 
-    it('should get treatments and time slots', async () => {
+    it('should get treatments and time slots', async() => {
       const res = await request(app)
         .get('/api/appointment/treatments')
         .expect(200);
@@ -108,7 +108,7 @@ describe('API Endpoints', () => {
   });
 
   describe('Blog Endpoints', () => {
-    it('should create a new blog post', async () => {
+    it('should create a new blog post', async() => {
       const blogData = {
         title: 'Test Blog Post',
         slug: 'test-blog-post',
@@ -127,7 +127,7 @@ describe('API Endpoints', () => {
       expect(res.body.data.slug).toBe(blogData.slug);
     });
 
-    it('should get blog posts with pagination', async () => {
+    it('should get blog posts with pagination', async() => {
       const res = await request(app)
         .get('/api/blog')
         .expect(200);
@@ -139,7 +139,7 @@ describe('API Endpoints', () => {
   });
 
   describe('Subscriber Endpoints', () => {
-    it('should subscribe to newsletter', async () => {
+    it('should subscribe to newsletter', async() => {
       const subscriberData = {
         email: 'subscriber@example.com',
         source: 'test'
@@ -154,7 +154,7 @@ describe('API Endpoints', () => {
       expect(res.body.data.email).toBe(subscriberData.email);
     });
 
-    it('should get subscribers with pagination', async () => {
+    it('should get subscribers with pagination', async() => {
       const res = await request(app)
         .get('/api/subscriber')
         .expect(200);
@@ -166,7 +166,7 @@ describe('API Endpoints', () => {
   });
 
   describe('Error Handling', () => {
-    it('should return 404 for non-existent routes', async () => {
+    it('should return 404 for non-existent routes', async() => {
       const res = await request(app)
         .get('/api/non-existent')
         .expect(404);
@@ -175,7 +175,7 @@ describe('API Endpoints', () => {
       expect(res.body.message).toContain('not found');
     });
 
-    it('should return validation errors for invalid data', async () => {
+    it('should return validation errors for invalid data', async() => {
       const invalidContact = {
         name: 'A', // Too short
         email: 'invalid-email', // Invalid format
