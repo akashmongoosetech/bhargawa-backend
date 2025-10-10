@@ -103,4 +103,38 @@ router.post('/test-email', asyncHandler(async(req, res) => {
   }
 }));
 
+// CORS debugging endpoint
+router.get('/cors-test', asyncHandler(async(req, res) => {
+  const corsInfo = {
+    origin: req.get('Origin') || 'No origin header',
+    userAgent: req.get('User-Agent'),
+    method: req.method,
+    headers: req.headers,
+    corsConfig: {
+      allowedOrigin: process.env.CORS_ORIGIN || '*',
+      credentials: process.env.CORS_CREDENTIALS === 'true',
+      environment: process.env.NODE_ENV
+    },
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('🔧 CORS Test Request:', corsInfo);
+  
+  res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  sendSuccessResponse(res, 'CORS test successful', corsInfo);
+}));
+
+// OPTIONS handler for preflight requests
+router.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.sendStatus(200);
+});
+
 export default router;
