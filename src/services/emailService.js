@@ -2,22 +2,47 @@ import nodemailer from 'nodemailer';
 
 // Email configuration with enhanced options
 const createTransporter = () => {
-  return nodemailer.createTransport({
+  const config = {
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_SECURE === 'true',
+    secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
     },
     tls: {
-      rejectUnauthorized: false
+      rejectUnauthorized: false // Accept self-signed certificates
     },
-    // Enhanced connection settings
+    // Enhanced connection settings for production
     pool: true,
     maxConnections: 5,
-    maxMessages: 100
+    maxMessages: 100,
+    // Connection timeout settings
+    connectionTimeout: 60000, // 60 seconds
+    greetingTimeout: 30000,    // 30 seconds
+    socketTimeout: 60000       // 60 seconds
+  };
+
+  // Production-specific Gmail configuration
+  if (process.env.NODE_ENV === 'production' && config.host === 'smtp.gmail.com') {
+    config.service = 'gmail';
+    config.secure = false;
+    config.requireTLS = true;
+    config.tls = {
+      rejectUnauthorized: false,
+      ciphers: 'SSLv3'
+    };
+  }
+
+  console.log('📧 Creating email transporter with config:', {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    service: config.service || 'none',
+    user: config.auth.user ? config.auth.user.replace(/(.{2})(.*)(@.*)/, '$1***$3') : 'not-set'
   });
+
+  return nodemailer.createTransport(config);
 };
 
 // Enhanced send email function with better error handling
@@ -43,11 +68,27 @@ export const sendEmail = async (options) => {
     };
   }
 
+  // Enhanced environment logging for production debugging
+  console.log('🔧 Email Configuration Check:');
+  console.log('- Environment:', process.env.NODE_ENV);
+  console.log('- Host:', process.env.EMAIL_HOST || 'smtp.gmail.com');
+  console.log('- Port:', process.env.EMAIL_PORT || 587);
+  console.log('- Secure:', process.env.EMAIL_SECURE === 'true');
+  console.log('- User configured:', !!process.env.EMAIL_USER);
+  console.log('- Password configured:', !!process.env.EMAIL_PASS);
+  console.log('- Attempting to send to:', options.to);
+
   try {
     const transporter = createTransporter();
 
-    // Enhanced connection verification
-    await transporter.verify();
+    // Enhanced connection verification with timeout
+    console.log('🔗 Attempting to verify email server connection...');
+    const verifyPromise = transporter.verify();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email server verification timeout (30s)')), 30000)
+    );
+    
+    await Promise.race([verifyPromise, timeoutPromise]);
     console.log('✅ Email server connection verified successfully');
 
     const mailOptions = {
@@ -84,13 +125,29 @@ export const sendEmail = async (options) => {
   } catch (error) {
     console.error('❌ Email sending failed:', {
       error: error.message,
+      code: error.code,
+      command: error.command,
       to: options.to,
       subject: options.subject,
       timestamp: new Date().toISOString(),
-      stack: error.stack
+      emailHost: process.env.EMAIL_HOST,
+      emailPort: process.env.EMAIL_PORT,
+      environment: process.env.NODE_ENV,
+      responseCode: error.responseCode,
+      response: error.response
     });
     
-    throw new Error(`Failed to send email to ${options.to}: ${error.message}`);
+    // Provide more specific error messages for common issues
+    let errorMessage = error.message;
+    if (error.code === 'EAUTH') {
+      errorMessage = 'Authentication failed. Please check EMAIL_USER and EMAIL_PASS in production environment.';
+    } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
+      errorMessage = 'Cannot connect to email server. Check network connectivity and firewall settings.';
+    } else if (error.code === 'ENOTFOUND') {
+      errorMessage = 'Email server hostname not found. Check EMAIL_HOST configuration.';
+    }
+    
+    throw new Error(`Failed to send email to ${options.to}: ${errorMessage}`);
   }
 };
 
