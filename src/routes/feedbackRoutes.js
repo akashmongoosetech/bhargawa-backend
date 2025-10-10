@@ -81,7 +81,10 @@ router.post('/', validateFeedback, asyncHandler(async (req, res) => {
     rating,
     treatment,
     review,
-    image: image || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
+    image: image || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+    status: 'approved',  // Auto-approve feedback
+    isApproved: true,    // Auto-approve feedback
+    approvedAt: new Date() // Set approval timestamp
   });
 
   await feedback.save();
