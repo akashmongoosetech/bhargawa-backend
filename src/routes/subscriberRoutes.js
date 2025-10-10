@@ -44,12 +44,15 @@ router.post('/', validateSubscription, asyncHandler(async(req, res) => {
   await subscriber.save();
 
   // Send confirmation emails asynchronously (don't wait for completion)
-  try {
-    sendSubscriptionConfirmationEmail({ email });
-  } catch (emailError) {
-    console.error('Failed to send subscription confirmation email:', emailError);
-    // Don't fail the request if email fails
-  }
+  setImmediate(async () => {
+    try {
+      await sendSubscriptionConfirmationEmail({ email });
+      console.log('✅ Subscription confirmation emails sent successfully');
+    } catch (emailError) {
+      console.error('❌ Failed to send subscription confirmation email:', emailError.message);
+      // Don't fail the request if email fails
+    }
+  });
 
   sendSuccessResponse(res, 'Successfully subscribed to newsletter', subscriber, 201);
 }));

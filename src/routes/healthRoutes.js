@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import { asyncHandler, sendSuccessResponse } from '../middleware/errorHandler.js';
+import { asyncHandler, sendSuccessResponse, sendErrorResponse } from '../middleware/errorHandler.js';
+import { sendEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -29,6 +30,32 @@ router.get('/', asyncHandler(async(req, res) => {
   };
 
   sendSuccessResponse(res, 'Server is healthy', healthCheck);
+}));
+
+// Test email endpoint
+router.post('/test-email', asyncHandler(async(req, res) => {
+  try {
+    const testEmailHtml = `
+      <h2>Test Email from Bhargava Clinic</h2>
+      <p>This is a test email to verify email functionality.</p>
+      <p>Sent at: ${new Date().toLocaleString()}</p>
+      <p>If you receive this email, the email service is working correctly!</p>
+    `;
+
+    await sendEmail({
+      to: process.env.CLINIC_EMAIL || 'akashraikwar763@gmail.com',
+      subject: 'Test Email - Bhargava Clinic',
+      html: testEmailHtml
+    });
+
+    sendSuccessResponse(res, 'Test email sent successfully', {
+      to: process.env.CLINIC_EMAIL || 'akashraikwar763@gmail.com',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Test email failed:', error.message);
+    sendErrorResponse(res, `Test email failed: ${error.message}`, 500);
+  }
 }));
 
 export default router;

@@ -131,20 +131,23 @@ router.post('/', validateAppointment, asyncHandler(async(req, res) => {
   await appointment.save();
 
   // Send confirmation emails asynchronously (don't wait for completion)
-  try {
-    sendAppointmentConfirmationEmail({
-      name,
-      email,
-      phone,
-      treatmentType,
-      preferredDate: selectedDate,
-      preferredTime,
-      message
-    });
-  } catch (emailError) {
-    console.error('Failed to send appointment confirmation email:', emailError);
-    // Don't fail the request if email fails
-  }
+  setImmediate(async () => {
+    try {
+      await sendAppointmentConfirmationEmail({
+        name,
+        email,
+        phone,
+        treatmentType,
+        preferredDate: selectedDate,
+        preferredTime,
+        message
+      });
+      console.log('✅ Appointment confirmation emails sent successfully');
+    } catch (emailError) {
+      console.error('❌ Failed to send appointment confirmation email:', emailError.message);
+      // Don't fail the request if email fails
+    }
+  });
 
   sendSuccessResponse(res, 'Appointment created successfully', appointment, 201);
 }));

@@ -296,6 +296,84 @@ blogSchema.index({ publishedAt: -1 });
 blogSchema.index({ createdAt: -1 });
 blogSchema.index({ tags: 1 });
 
+// Feedback Schema
+const feedbackSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Name is required'],
+    trim: true,
+    minlength: [2, 'Name must be at least 2 characters'],
+    maxlength: [100, 'Name cannot exceed 100 characters']
+  },
+  email: {
+    type: String,
+    required: [true, 'Email is required'],
+    trim: true,
+    lowercase: true,
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+  },
+  rating: {
+    type: Number,
+    required: [true, 'Rating is required'],
+    min: [1, 'Rating must be between 1 and 5'],
+    max: [5, 'Rating must be between 1 and 5']
+  },
+  treatment: {
+    type: String,
+    required: [true, 'Treatment type is required'],
+    trim: true,
+    maxlength: [100, 'Treatment type cannot exceed 100 characters']
+  },
+  review: {
+    type: String,
+    required: [true, 'Review is required'],
+    trim: true,
+    minlength: [10, 'Review must be at least 10 characters'],
+    maxlength: [1000, 'Review cannot exceed 1000 characters']
+  },
+  image: {
+    type: String,
+    trim: true,
+    default: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  isApproved: {
+    type: Boolean,
+    default: false
+  },
+  approvedAt: {
+    type: Date
+  },
+  featured: {
+    type: Boolean,
+    default: false
+  },
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  adminNotes: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Admin notes cannot exceed 500 characters']
+  }
+}, {
+  timestamps: true
+});
+
+// Indexes for better performance
+feedbackSchema.index({ email: 1 });
+feedbackSchema.index({ rating: 1 });
+feedbackSchema.index({ status: 1 });
+feedbackSchema.index({ isApproved: 1 });
+feedbackSchema.index({ featured: 1 });
+feedbackSchema.index({ createdAt: -1 });
+feedbackSchema.index({ approvedAt: -1 });
+
 // Subscriber Schema
 const subscriberSchema = new mongoose.Schema({
   email: {
@@ -323,6 +401,7 @@ subscriberSchema.index({ createdAt: -1 });
 const Contact = mongoose.model('Contact', contactSchema);
 const Appointment = mongoose.model('Appointment', appointmentSchema);
 const Blog = mongoose.model('Blog', blogSchema);
+const Feedback = mongoose.model('Feedback', feedbackSchema);
 const Subscriber = mongoose.model('Subscriber', subscriberSchema);
 
-export { Contact, Appointment, Blog, Subscriber };
+export { Contact, Appointment, Blog, Feedback, Subscriber };

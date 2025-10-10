@@ -72,12 +72,15 @@ router.post('/', validateContact, asyncHandler(async(req, res) => {
   await contact.save();
 
   // Send confirmation emails asynchronously (don't wait for completion)
-  try {
-    sendContactConfirmationEmail({ name, email, subject, message });
-  } catch (emailError) {
-    console.error('Failed to send contact confirmation email:', emailError);
-    // Don't fail the request if email fails
-  }
+  setImmediate(async () => {
+    try {
+      await sendContactConfirmationEmail({ name, email, subject, message });
+      console.log('✅ Contact confirmation emails sent successfully');
+    } catch (emailError) {
+      console.error('❌ Failed to send contact confirmation email:', emailError.message);
+      // Don't fail the request if email fails
+    }
+  });
 
   sendSuccessResponse(res, 'Contact created successfully', contact, 201);
 }));
