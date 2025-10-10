@@ -32,29 +32,74 @@ router.get('/', asyncHandler(async(req, res) => {
   sendSuccessResponse(res, 'Server is healthy', healthCheck);
 }));
 
-// Test email endpoint
+// Test email endpoint with enhanced debugging
 router.post('/test-email', asyncHandler(async(req, res) => {
   try {
+    const { to, subject, message } = req.body;
+    
     const testEmailHtml = `
       <h2>Test Email from Bhargava Clinic</h2>
       <p>This is a test email to verify email functionality.</p>
-      <p>Sent at: ${new Date().toLocaleString()}</p>
+      <p><strong>Subject:</strong> ${subject || 'Default Test Email'}</p>
+      <p><strong>Message:</strong> ${message || 'Testing email service configuration'}</p>
+      <p><strong>Environment:</strong> ${process.env.NODE_ENV}</p>
+      <p><strong>Server Time:</strong> ${new Date().toLocaleString()}</p>
+      <p><strong>Server Info:</strong></p>
+      <ul>
+        <li>Email Host: ${process.env.EMAIL_HOST || 'Not configured'}</li>
+        <li>Email Port: ${process.env.EMAIL_PORT || 'Not configured'}</li>
+        <li>Email User: ${process.env.EMAIL_USER ? process.env.EMAIL_USER.replace(/(.{2})(.*)(@.*)/, '$1***$3') : 'Not configured'}</li>
+        <li>Password Set: ${process.env.EMAIL_PASS ? 'Yes' : 'No'}</li>
+      </ul>
       <p>If you receive this email, the email service is working correctly!</p>
     `;
 
-    await sendEmail({
-      to: process.env.CLINIC_EMAIL || 'akashraikwar763@gmail.com',
-      subject: 'Test Email - Bhargava Clinic',
+    const emailOptions = {
+      to: to || process.env.CLINIC_EMAIL || 'test@example.com',
+      subject: `Test Email - ${subject || 'Bhargava Clinic'} - ${new Date().toLocaleString()}`,
       html: testEmailHtml
-    });
+    };
 
-    sendSuccessResponse(res, 'Test email sent successfully', {
-      to: process.env.CLINIC_EMAIL || 'akashraikwar763@gmail.com',
+    console.log('📧 Sending test email:', {
+      to: emailOptions.to,
+      subject: emailOptions.subject,
+      environment: process.env.NODE_ENV,
       timestamp: new Date().toISOString()
     });
+
+    const result = await sendEmail(emailOptions);
+
+    sendSuccessResponse(res, 'Test email sent successfully', {
+      ...result,
+      to: emailOptions.to,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      emailConfig: {
+        host: process.env.EMAIL_HOST || 'Not configured',
+        port: process.env.EMAIL_PORT || 'Not configured',
+        user: process.env.EMAIL_USER ? process.env.EMAIL_USER.replace(/(.{2})(.*)(@.*)/, '$1***$3') : 'Not configured',
+        passwordConfigured: !!process.env.EMAIL_PASS
+      }
+    });
   } catch (error) {
-    console.error('Test email failed:', error.message);
-    sendErrorResponse(res, `Test email failed: ${error.message}`, 500);
+    console.error('Test email failed:', {
+      error: error.message,
+      code: error.code,
+      response: error.response,
+      stack: error.stack
+    });
+    
+    sendErrorResponse(res, `Test email failed: ${error.message}`, 500, {
+      error: error.message,
+      code: error.code,
+      response: error.response,
+      emailConfig: {
+        host: process.env.EMAIL_HOST || 'Not configured',
+        port: process.env.EMAIL_PORT || 'Not configured',
+        user: process.env.EMAIL_USER ? process.env.EMAIL_USER.replace(/(.{2})(.*)(@.*)/, '$1***$3') : 'Not configured',
+        passwordConfigured: !!process.env.EMAIL_PASS
+      }
+    });
   }
 }));
 
