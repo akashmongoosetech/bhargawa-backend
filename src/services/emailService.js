@@ -1,37 +1,106 @@
 import nodemailer from 'nodemailer';
 
-// Email configuration with enhanced options
+// Enhanced email configuration with multiple provider support
 const createTransporter = () => {
-  const config = {
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    },
-    tls: {
-      rejectUnauthorized: false // Accept self-signed certificates
-    },
-    // Enhanced connection settings for production
+  // Determine email provider based on EMAIL_PROVIDER env var or host
+  const provider = process.env.EMAIL_PROVIDER || 'gmail';
+  
+  let config = {
     pool: true,
     maxConnections: 5,
     maxMessages: 100,
-    // Connection timeout settings
-    connectionTimeout: 60000, // 60 seconds
-    greetingTimeout: 30000,    // 30 seconds
-    socketTimeout: 60000       // 60 seconds
+    connectionTimeout: 30000, // Reduced from 60s to 30s
+    greetingTimeout: 15000,   // Reduced from 30s to 15s
+    socketTimeout: 30000,     // Reduced from 60s to 30s
+    logger: process.env.NODE_ENV === 'production' ? false : true,
+    debug: process.env.NODE_ENV !== 'production'
   };
 
-  // Production-specific Gmail configuration
-  if (process.env.NODE_ENV === 'production' && config.host === 'smtp.gmail.com') {
-    config.service = 'gmail';
-    config.secure = false;
-    config.requireTLS = true;
-    config.tls = {
-      rejectUnauthorized: false,
-      ciphers: 'SSLv3'
-    };
+  // Configure based on provider
+  switch (provider.toLowerCase()) {
+    case 'sendgrid':
+      config = {
+        ...config,
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        secure: false,
+        auth: {
+          user: 'apikey',
+          pass: process.env.SENDGRID_API_KEY
+        },
+        tls: { rejectUnauthorized: false }
+      };
+      break;
+      
+    case 'mailgun':
+      config = {
+        ...config,
+        host: 'smtp.mailgun.org',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.MAILGUN_SMTP_USER,
+          pass: process.env.MAILGUN_SMTP_PASS
+        },
+        tls: { rejectUnauthorized: false }
+      };
+      break;
+      
+    case 'aws-ses':
+      config = {
+        ...config,
+        host: process.env.AWS_SES_HOST || 'email-smtp.us-east-1.amazonaws.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.AWS_ACCESS_KEY_ID,
+          pass: process.env.AWS_SECRET_ACCESS_KEY
+        },
+        tls: { rejectUnauthorized: false }
+      };
+      break;
+      
+    case 'outlook':
+      config = {
+        ...config,
+        host: 'smtp-mail.outlook.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
+        tls: {
+          rejectUnauthorized: false,
+          ciphers: 'SSLv3'
+        }
+      };
+      break;
+      
+    default: // Gmail or custom SMTP
+      config = {
+        ...config,
+        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.EMAIL_PORT) || 587,
+        secure: process.env.EMAIL_SECURE === 'true',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
+        tls: {
+          rejectUnauthorized: false,
+          ciphers: 'SSLv3'
+        }
+      };
+      
+      // Enhanced Gmail-specific configuration
+      if (config.host === 'smtp.gmail.com') {
+        config.service = 'gmail';
+        config.secure = false; // Use STARTTLS
+        config.requireTLS = true;
+        config.auth.type = 'OAuth2' // Will fallback to login if OAuth2 not configured
+      }
+      break;
   }
 
   console.log('📧 Creating email transporter with config:', {
@@ -45,11 +114,29 @@ const createTransporter = () => {
   return nodemailer.createTransport(config);
 };
 
-// Enhanced send email function with better error handling
+// Enhanced send email function with better error handling and provider support
 export const sendEmail = async (options) => {
-  // Enhanced email configuration check
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  const provider = process.env.EMAIL_PROVIDER || 'gmail';
+  
+  // Check email configuration based on provider
+  let isConfigured = false;
+  switch (provider.toLowerCase()) {
+    case 'sendgrid':
+      isConfigured = !!process.env.SENDGRID_API_KEY;
+      break;
+    case 'mailgun':
+      isConfigured = !!(process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS);
+      break;
+    case 'aws-ses':
+      isConfigured = !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
+      break;
+    default:
+      isConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+  }
+  
+  if (!isConfigured) {
     const emailDetails = {
+      provider,
       to: options.to,
       subject: options.subject,
       from: `"${process.env.CLINIC_NAME || 'Bhargava Clinic'}" <${process.env.EMAIL_USER || 'not-configured'}>`,
@@ -58,6 +145,7 @@ export const sendEmail = async (options) => {
     };
     
     console.log('=== EMAIL NOT CONFIGURED: Email would be sent ===');
+    console.log('Provider:', provider);
     console.log('Email Details:', JSON.stringify(emailDetails, null, 2));
     console.log('=====================================');
     
@@ -70,6 +158,7 @@ export const sendEmail = async (options) => {
 
   // Enhanced environment logging for production debugging
   console.log('🔧 Email Configuration Check:');
+  console.log('- Provider:', provider);
   console.log('- Environment:', process.env.NODE_ENV);
   console.log('- Host:', process.env.EMAIL_HOST || 'smtp.gmail.com');
   console.log('- Port:', process.env.EMAIL_PORT || 587);
