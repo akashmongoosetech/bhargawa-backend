@@ -397,11 +397,93 @@ const subscriberSchema = new mongoose.Schema({
 subscriberSchema.index({ email: 1 });
 subscriberSchema.index({ createdAt: -1 });
 
+// Gallery Schema
+const gallerySchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: [true, 'Title is required'],
+    trim: true,
+    minlength: [3, 'Title must be at least 3 characters'],
+    maxlength: [200, 'Title cannot exceed 200 characters']
+  },
+  description: {
+    type: String,
+    required: [true, 'Description is required'],
+    trim: true,
+    minlength: [10, 'Description must be at least 10 characters'],
+    maxlength: [500, 'Description cannot exceed 500 characters']
+  },
+  category: {
+    type: String,
+    required: [true, 'Category is required'],
+    enum: ['before-after', 'clinic'],
+    default: 'clinic'
+  },
+  beforeUrl: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return !v || /^https?:\/\/.+/.test(v);
+      },
+      message: 'Before image URL must be a valid URL'
+    }
+  },
+  afterUrl: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return !v || /^https?:\/\/.+/.test(v);
+      },
+      message: 'After image URL must be a valid URL'
+    }
+  },
+  url: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return !v || /^https?:\/\/.+/.test(v);
+      },
+      message: 'Image URL must be a valid URL'
+    }
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  },
+  order: {
+    type: Number,
+    default: 0,
+    min: [0, 'Order must be a positive number']
+  },
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  adminNotes: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Admin notes cannot exceed 500 characters']
+  }
+}, {
+  timestamps: true
+});
+
+// Indexes for better performance
+gallerySchema.index({ category: 1 });
+gallerySchema.index({ status: 1 });
+gallerySchema.index({ order: 1 });
+gallerySchema.index({ createdAt: -1 });
+
 // Create models
 const Contact = mongoose.model('Contact', contactSchema);
 const Appointment = mongoose.model('Appointment', appointmentSchema);
 const Blog = mongoose.model('Blog', blogSchema);
 const Feedback = mongoose.model('Feedback', feedbackSchema);
 const Subscriber = mongoose.model('Subscriber', subscriberSchema);
+const Gallery = mongoose.model('Gallery', gallerySchema);
 
-export { Contact, Appointment, Blog, Feedback, Subscriber };
+export { Contact, Appointment, Blog, Feedback, Subscriber, Gallery };

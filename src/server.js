@@ -17,6 +17,7 @@ import appointmentRoutes from './routes/appointmentRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import subscriberRoutes from './routes/subscriberRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
+import galleryRoutes from './routes/galleryRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 
 // Import middleware
@@ -111,6 +112,7 @@ app.use('/api/appointment', appointmentRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/subscriber', subscriberRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -127,7 +129,8 @@ app.get('/', (req, res) => {
         appointments: '/api/appointment',
         blogs: '/api/blog',
         subscribers: '/api/subscriber',
-        feedback: '/api/feedback'
+        feedback: '/api/feedback',
+        gallery: '/api/gallery'
       }
     },
     errors: []
