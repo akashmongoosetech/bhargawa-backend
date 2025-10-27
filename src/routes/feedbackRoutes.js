@@ -1,8 +1,10 @@
 import express from 'express';
-import { body, param, query, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 import { Feedback } from '../models/index.js';
 import { asyncHandler, sendSuccessResponse, sendErrorResponse, formatValidationErrors } from '../middleware/errorHandler.js';
 import { sendFeedbackConfirmationEmail } from '../services/emailService.js';
+
+/* global setImmediate */
 
 const router = express.Router();
 
@@ -61,7 +63,7 @@ const validateFeedbackUpdate = [
 // @route   POST /api/feedback
 // @desc    Create a new feedback
 // @access  Public
-router.post('/', validateFeedback, asyncHandler(async (req, res) => {
+router.post('/', validateFeedback, asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -81,13 +83,16 @@ router.post('/', validateFeedback, asyncHandler(async (req, res) => {
     rating,
     treatment,
     review,
-    image: image || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
+    image: image || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+    status: 'approved',
+    isApproved: true,
+    approvedAt: new Date()
   });
 
   await feedback.save();
 
   // Send confirmation email asynchronously
-  setImmediate(async () => {
+  setImmediate(async() => {
     try {
       await sendFeedbackConfirmationEmail({ name, email, rating, treatment, review });
       console.log('✅ Feedback confirmation email sent successfully');
@@ -102,7 +107,7 @@ router.post('/', validateFeedback, asyncHandler(async (req, res) => {
 // @route   GET /api/feedback
 // @desc    Get all feedback with pagination and filtering
 // @access  Public
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async(req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -152,7 +157,7 @@ router.get('/', asyncHandler(async (req, res) => {
   }
 
   // Sort order: featured first, then by approved date, then by creation date
-  const sortOrder = req.query.admin === 'true' 
+  const sortOrder = req.query.admin === 'true'
     ? { createdAt: -1 }
     : { featured: -1, approvedAt: -1, createdAt: -1 };
 
@@ -182,7 +187,7 @@ router.get('/', asyncHandler(async (req, res) => {
 // @route   GET /api/feedback/featured
 // @desc    Get featured feedback for display
 // @access  Public
-router.get('/featured', asyncHandler(async (req, res) => {
+router.get('/featured', asyncHandler(async(req, res) => {
   const limit = parseInt(req.query.limit) || 6;
 
   const featuredFeedback = await Feedback.find({
@@ -199,7 +204,7 @@ router.get('/featured', asyncHandler(async (req, res) => {
 // @route   GET /api/feedback/stats
 // @desc    Get feedback statistics
 // @access  Public
-router.get('/stats/summary', asyncHandler(async (req, res) => {
+router.get('/stats/summary', asyncHandler(async(req, res) => {
   const [totalCount, approvedCount, pendingCount, rejectedCount, featuredCount, ratings] = await Promise.all([
     Feedback.countDocuments(),
     Feedback.countDocuments({ isApproved: true, status: 'approved' }),
@@ -241,7 +246,7 @@ router.get('/stats/summary', asyncHandler(async (req, res) => {
 // @access  Public
 router.get('/:id', [
   param('id').isMongoId().withMessage('Invalid feedback ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -262,7 +267,7 @@ router.get('/:id', [
 router.put('/:id', [
   param('id').isMongoId().withMessage('Invalid feedback ID'),
   ...validateFeedbackUpdate
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -308,7 +313,7 @@ router.put('/:id', [
 // @access  Public (should be protected in production)
 router.delete('/:id', [
   param('id').isMongoId().withMessage('Invalid feedback ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -330,7 +335,7 @@ router.delete('/:id', [
 // @access  Public (should be protected in production)
 router.post('/:id/approve', [
   param('id').isMongoId().withMessage('Invalid feedback ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -360,7 +365,7 @@ router.post('/:id/approve', [
 // @access  Public (should be protected in production)
 router.post('/:id/feature', [
   param('id').isMongoId().withMessage('Invalid feedback ID')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return sendErrorResponse(res, 'Validation failed', 400, formatValidationErrors(errors));
@@ -381,5 +386,6 @@ router.post('/:id/feature', [
   const message = updatedFeedback.featured ? 'Feedback featured successfully' : 'Feedback unfeatured successfully';
   sendSuccessResponse(res, message, updatedFeedback);
 }));
+
 
 export default router;

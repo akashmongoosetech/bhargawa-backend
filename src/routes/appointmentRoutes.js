@@ -131,7 +131,7 @@ router.post('/', validateAppointment, asyncHandler(async(req, res) => {
   await appointment.save();
 
   // Send confirmation emails asynchronously (don't wait for completion)
-  setImmediate(async () => {
+  setImmediate(async() => {
     try {
       await sendAppointmentConfirmationEmail({
         name,

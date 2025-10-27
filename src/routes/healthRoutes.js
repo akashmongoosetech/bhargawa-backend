@@ -36,7 +36,7 @@ router.get('/', asyncHandler(async(req, res) => {
 router.post('/test-email', asyncHandler(async(req, res) => {
   try {
     const { to, subject, message } = req.body;
-    
+
     const testEmailHtml = `
       <h2>Test Email from Bhargava Clinic</h2>
       <p>This is a test email to verify email functionality.</p>
@@ -88,7 +88,7 @@ router.post('/test-email', asyncHandler(async(req, res) => {
       response: error.response,
       stack: error.stack
     });
-    
+
     sendErrorResponse(res, `Test email failed: ${error.message}`, 500, {
       error: error.message,
       code: error.code,

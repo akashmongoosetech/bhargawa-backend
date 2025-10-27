@@ -46,7 +46,7 @@ const createTransporter = () => {
 };
 
 // Enhanced send email function with better error handling
-export const sendEmail = async (options) => {
+export const sendEmail = async(options) => {
   // Enhanced email configuration check
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     const emailDetails = {
@@ -56,13 +56,13 @@ export const sendEmail = async (options) => {
       htmlLength: options.html?.length || 0,
       timestamp: new Date().toISOString()
     };
-    
+
     console.log('=== EMAIL NOT CONFIGURED: Email would be sent ===');
     console.log('Email Details:', JSON.stringify(emailDetails, null, 2));
     console.log('=====================================');
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       messageId: 'not-configured-' + Date.now(),
       preview: emailDetails
     };
@@ -84,10 +84,10 @@ export const sendEmail = async (options) => {
     // Enhanced connection verification with timeout
     console.log('🔗 Attempting to verify email server connection...');
     const verifyPromise = transporter.verify();
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Email server verification timeout (30s)')), 30000)
     );
-    
+
     await Promise.race([verifyPromise, timeoutPromise]);
     console.log('✅ Email server connection verified successfully');
 
@@ -108,16 +108,16 @@ export const sendEmail = async (options) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    
+
     console.log('✅ Email sent successfully:', {
       messageId: info.messageId,
       to: options.to,
       subject: options.subject,
       timestamp: new Date().toISOString()
     });
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       messageId: info.messageId,
       accepted: info.accepted,
       rejected: info.rejected
@@ -136,7 +136,7 @@ export const sendEmail = async (options) => {
       responseCode: error.responseCode,
       response: error.response
     });
-    
+
     // Provide more specific error messages for common issues
     let errorMessage = error.message;
     if (error.code === 'EAUTH') {
@@ -146,14 +146,14 @@ export const sendEmail = async (options) => {
     } else if (error.code === 'ENOTFOUND') {
       errorMessage = 'Email server hostname not found. Check EMAIL_HOST configuration.';
     }
-    
+
     throw new Error(`Failed to send email to ${options.to}: ${errorMessage}`);
   }
 };
 
 // Helper function to generate text version from HTML
 const generateTextVersion = (html) => {
-  if (!html) return '';
+  if (!html) {return '';}
   return html
     .replace(/<style[^>]*>.*?<\/style>/gs, '')
     .replace(/<script[^>]*>.*?<\/script>/gs, '')
@@ -382,10 +382,10 @@ const getBaseTemplate = (title, content, headerColor = '#667eea') => `
 `;
 
 // Contact form email templates
-export const sendContactConfirmationEmail = async (contactData) => {
-    const { name, email, subject, message, phone } = contactData;
+export const sendContactConfirmationEmail = async(contactData) => {
+  const { name, email, subject, message, phone } = contactData;
 
-    const userEmailContent = `
+  const userEmailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">Thank You for Contacting Bhargava Clinic</h1>
         
         <div class="greeting">Dear ${name},</div>
@@ -407,14 +407,14 @@ export const sendContactConfirmationEmail = async (contactData) => {
                 ` : ''}
                 <div class="info-item">
                     <span class="info-label">Submitted:</span>
-                    <span class="info-value">${new Date().toLocaleString('en-IN', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })}</span>
+                    <span class="info-value">${new Date().toLocaleString('en-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}</span>
                 </div>
             </div>
             
@@ -448,7 +448,7 @@ export const sendContactConfirmationEmail = async (contactData) => {
         </p>
     `;
 
-    const adminEmailContent = `
+  const adminEmailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">New Contact Form Submission</h1>
         
         <p>A new contact form submission requires your attention. Here are the complete details:</p>
@@ -503,41 +503,41 @@ export const sendContactConfirmationEmail = async (contactData) => {
         </p>
     `;
 
-    try {
-        // Send confirmation to user
-        await sendEmail({
-            to: email,
-            subject: `Thank You for Contacting Bhargava Clinic - ${subject}`,
-            html: getBaseTemplate('Contact Confirmation - Bhargava Clinic', userEmailContent, '#667eea')
-        });
+  try {
+    // Send confirmation to user
+    await sendEmail({
+      to: email,
+      subject: `Thank You for Contacting Bhargava Clinic - ${subject}`,
+      html: getBaseTemplate('Contact Confirmation - Bhargava Clinic', userEmailContent, '#667eea')
+    });
 
-        // Send notification to admin
-        await sendEmail({
-            to: process.env.CLINIC_EMAIL || process.env.EMAIL_USER,
-            subject: `📧 New Contact Form: ${subject} - ${name}`,
-            html: getBaseTemplate('New Contact Form Submission', adminEmailContent, '#e53e3e'),
-            cc: process.env.CLINIC_CC_EMAILS?.split(',')
-        });
+    // Send notification to admin
+    await sendEmail({
+      to: process.env.CLINIC_EMAIL || process.env.EMAIL_USER,
+      subject: `📧 New Contact Form: ${subject} - ${name}`,
+      html: getBaseTemplate('New Contact Form Submission', adminEmailContent, '#e53e3e'),
+      cc: process.env.CLINIC_CC_EMAILS?.split(',')
+    });
 
-        return { success: true, message: 'Contact emails sent successfully' };
-    } catch (error) {
-        console.error('Failed to send contact emails:', error);
-        throw error;
-    }
+    return { success: true, message: 'Contact emails sent successfully' };
+  } catch (error) {
+    console.error('Failed to send contact emails:', error);
+    throw error;
+  }
 };
 
 // Appointment booking email templates
-export const sendAppointmentConfirmationEmail = async (appointmentData) => {
-    const { name, email, phone, treatmentType, preferredDate, preferredTime, message, age, gender } = appointmentData;
+export const sendAppointmentConfirmationEmail = async(appointmentData) => {
+  const { name, email, phone, treatmentType, preferredDate, preferredTime, message, age, gender } = appointmentData;
 
-    const formattedDate = new Date(preferredDate).toLocaleDateString('en-IN', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+  const formattedDate = new Date(preferredDate).toLocaleDateString('en-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 
-    const userEmailContent = `
+  const userEmailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">Appointment Request Received</h1>
         
         <div class="greeting">Dear ${name},</div>
@@ -617,7 +617,7 @@ export const sendAppointmentConfirmationEmail = async (appointmentData) => {
         </p>
     `;
 
-    const adminEmailContent = `
+  const adminEmailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">New Appointment Request</h1>
         
         <p>A new appointment request has been submitted and requires confirmation.</p>
@@ -707,35 +707,35 @@ export const sendAppointmentConfirmationEmail = async (appointmentData) => {
         </div>
     `;
 
-    try {
-        // Send confirmation to user
-        await sendEmail({
-            to: email,
-            subject: `Appointment Request Received - Bhargava Clinic`,
-            html: getBaseTemplate('Appointment Request Confirmation', userEmailContent, '#4ecdc4')
-        });
+  try {
+    // Send confirmation to user
+    await sendEmail({
+      to: email,
+      subject: 'Appointment Request Received - Bhargava Clinic',
+      html: getBaseTemplate('Appointment Request Confirmation', userEmailContent, '#4ecdc4')
+    });
 
-        // Send notification to admin
-        await sendEmail({
-            to: process.env.CLINIC_EMAIL || process.env.EMAIL_USER,
-            subject: `📅 New Appointment: ${name} - ${treatmentType}`,
-            html: getBaseTemplate('New Appointment Request', adminEmailContent, '#ed8936'),
-            cc: process.env.CLINIC_CC_EMAILS?.split(','),
-            bcc: process.env.CLINIC_BCC_EMAILS?.split(',')
-        });
+    // Send notification to admin
+    await sendEmail({
+      to: process.env.CLINIC_EMAIL || process.env.EMAIL_USER,
+      subject: `📅 New Appointment: ${name} - ${treatmentType}`,
+      html: getBaseTemplate('New Appointment Request', adminEmailContent, '#ed8936'),
+      cc: process.env.CLINIC_CC_EMAILS?.split(','),
+      bcc: process.env.CLINIC_BCC_EMAILS?.split(',')
+    });
 
-        return { success: true, message: 'Appointment emails sent successfully' };
-    } catch (error) {
-        console.error('Failed to send appointment emails:', error);
-        throw error;
-    }
+    return { success: true, message: 'Appointment emails sent successfully' };
+  } catch (error) {
+    console.error('Failed to send appointment emails:', error);
+    throw error;
+  }
 };
 
 // Newsletter subscription email templates
-export const sendSubscriptionConfirmationEmail = async (subscriberData) => {
-    const { email, name = 'Subscriber' } = subscriberData;
+export const sendSubscriptionConfirmationEmail = async(subscriberData) => {
+  const { email, name = 'Subscriber' } = subscriberData;
 
-    const userEmailContent = `
+  const userEmailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">Welcome to Our Dermatology Community! </h1>
         
         <div class="greeting">Dear ${name},</div>
@@ -795,7 +795,7 @@ export const sendSubscriptionConfirmationEmail = async (subscriberData) => {
         </p>
     `;
 
-    const adminEmailContent = `
+  const adminEmailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">New Newsletter Subscription</h1>
         
         <p>Great news! A new subscriber has joined your newsletter community.</p>
@@ -839,33 +839,33 @@ export const sendSubscriptionConfirmationEmail = async (subscriberData) => {
         </p>
     `;
 
-    try {
-        // Send welcome email to subscriber
-        await sendEmail({
-            to: email,
-            subject: 'Welcome to Bhargava Clinic Newsletter! 🎉',
-            html: getBaseTemplate('Welcome to Our Newsletter', userEmailContent, '#a8e6cf')
-        });
+  try {
+    // Send welcome email to subscriber
+    await sendEmail({
+      to: email,
+      subject: 'Welcome to Bhargava Clinic Newsletter! 🎉',
+      html: getBaseTemplate('Welcome to Our Newsletter', userEmailContent, '#a8e6cf')
+    });
 
-        // Send notification to admin
-        await sendEmail({
-            to: process.env.CLINIC_EMAIL || process.env.EMAIL_USER,
-            subject: `📢 New Newsletter Subscriber: ${email}`,
-            html: getBaseTemplate('New Newsletter Subscription', adminEmailContent, '#ffd3a5')
-        });
+    // Send notification to admin
+    await sendEmail({
+      to: process.env.CLINIC_EMAIL || process.env.EMAIL_USER,
+      subject: `📢 New Newsletter Subscriber: ${email}`,
+      html: getBaseTemplate('New Newsletter Subscription', adminEmailContent, '#ffd3a5')
+    });
 
-        return { success: true, message: 'Subscription emails sent successfully' };
-    } catch (error) {
-        console.error('Failed to send subscription emails:', error);
-        throw error;
-    }
+    return { success: true, message: 'Subscription emails sent successfully' };
+  } catch (error) {
+    console.error('Failed to send subscription emails:', error);
+    throw error;
+  }
 };
 
 // Feedback email templates
-export const sendFeedbackConfirmationEmail = async (feedbackData) => {
-    const { name, email, rating, treatment, review, visitDate } = feedbackData;
+export const sendFeedbackConfirmationEmail = async(feedbackData) => {
+  const { name, email, rating, treatment, review, visitDate } = feedbackData;
 
-    const userEmailContent = `
+  const userEmailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">Thank You for Your Valuable Feedback!</h1>
         
         <div class="greeting">Dear ${name},</div>
@@ -889,7 +889,7 @@ export const sendFeedbackConfirmationEmail = async (feedbackData) => {
                     <span class="info-label">Your Rating:</span>
                     <span class="info-value">
                         <span style="color: #fbbf24; font-size: 18px;">
-                            ${'★'.repeat(rating)}${'☆'.repeat(5-rating)}
+                            ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}
                         </span>
                         (${rating}/5)
                     </span>
@@ -951,7 +951,7 @@ export const sendFeedbackConfirmationEmail = async (feedbackData) => {
         </p>
     `;
 
-    const adminEmailContent = `
+  const adminEmailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">New Patient Feedback Received</h1>
         
         <p>A patient has submitted feedback about their experience. Here's what they shared:</p>
@@ -981,7 +981,7 @@ export const sendFeedbackConfirmationEmail = async (feedbackData) => {
                     <span class="info-label">Rating:</span>
                     <span class="info-value">
                         <span style="color: #fbbf24; font-size: 16px;">
-                            ${'★'.repeat(rating)}${'☆'.repeat(5-rating)}
+                            ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}
                         </span>
                         (${rating}/5)
                     </span>
@@ -1041,33 +1041,33 @@ export const sendFeedbackConfirmationEmail = async (feedbackData) => {
         </div>
     `;
 
-    try {
-        // Send confirmation to user
-        await sendEmail({
-            to: email,
-            subject: `Thank You for Your Feedback - Bhargava Clinic`,
-            html: getBaseTemplate('Feedback Received', userEmailContent, '#ffd89b')
-        });
+  try {
+    // Send confirmation to user
+    await sendEmail({
+      to: email,
+      subject: 'Thank You for Your Feedback - Bhargava Clinic',
+      html: getBaseTemplate('Feedback Received', userEmailContent, '#ffd89b')
+    });
 
-        // Send notification to admin
-        await sendEmail({
-            to: process.env.CLINIC_EMAIL || process.env.EMAIL_USER,
-            subject: `📝 New Patient Feedback: ${name} - ${rating}/5 Stars - ${treatment}`,
-            html: getBaseTemplate('New Patient Feedback', adminEmailContent, '#667eea'),
-            cc: process.env.CLINIC_CC_EMAILS?.split(','),
-            bcc: process.env.CLINIC_BCC_EMAILS?.split(',')
-        });
+    // Send notification to admin
+    await sendEmail({
+      to: process.env.CLINIC_EMAIL || process.env.EMAIL_USER,
+      subject: `📝 New Patient Feedback: ${name} - ${rating}/5 Stars - ${treatment}`,
+      html: getBaseTemplate('New Patient Feedback', adminEmailContent, '#667eea'),
+      cc: process.env.CLINIC_CC_EMAILS?.split(','),
+      bcc: process.env.CLINIC_BCC_EMAILS?.split(',')
+    });
 
-        return { success: true, message: 'Feedback emails sent successfully' };
-    } catch (error) {
-        console.error('Failed to send feedback emails:', error);
-        throw error;
-    }
+    return { success: true, message: 'Feedback emails sent successfully' };
+  } catch (error) {
+    console.error('Failed to send feedback emails:', error);
+    throw error;
+  }
 };
 
 // Additional utility function for sending custom emails
-export const sendCustomEmail = async (to, subject, content, options = {}) => {
-    const emailContent = `
+export const sendCustomEmail = async(to, subject, content, options = {}) => {
+  const emailContent = `
         <h1 style="color: #2d3748; margin-bottom: 20px;">${subject}</h1>
         <div class="greeting">${options.greeting || 'Dear Valued Patient,'}</div>
         <div style="line-height: 1.8;">
@@ -1080,19 +1080,19 @@ export const sendCustomEmail = async (to, subject, content, options = {}) => {
         ` : ''}
     `;
 
-    return await sendEmail({
-        to,
-        subject,
-        html: getBaseTemplate(subject, emailContent, options.headerColor || '#667eea'),
-        ...options
-    });
+  return await sendEmail({
+    to,
+    subject,
+    html: getBaseTemplate(subject, emailContent, options.headerColor || '#667eea'),
+    ...options
+  });
 };
 
 export default {
-    sendEmail,
-    sendContactConfirmationEmail,
-    sendAppointmentConfirmationEmail,
-    sendSubscriptionConfirmationEmail,
-    sendFeedbackConfirmationEmail,
-    sendCustomEmail
+  sendEmail,
+  sendContactConfirmationEmail,
+  sendAppointmentConfirmationEmail,
+  sendSubscriptionConfirmationEmail,
+  sendFeedbackConfirmationEmail,
+  sendCustomEmail
 };

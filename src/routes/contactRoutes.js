@@ -72,7 +72,7 @@ router.post('/', validateContact, asyncHandler(async(req, res) => {
   await contact.save();
 
   // Send confirmation emails asynchronously (don't wait for completion)
-  setImmediate(async () => {
+  setImmediate(async() => {
     try {
       await sendContactConfirmationEmail({ name, email, subject, message });
       console.log('✅ Contact confirmation emails sent successfully');

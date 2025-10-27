@@ -44,7 +44,7 @@ router.post('/', validateSubscription, asyncHandler(async(req, res) => {
   await subscriber.save();
 
   // Send confirmation emails asynchronously (don't wait for completion)
-  setImmediate(async () => {
+  setImmediate(async() => {
     try {
       await sendSubscriptionConfirmationEmail({ email });
       console.log('✅ Subscription confirmation emails sent successfully');
